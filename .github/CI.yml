@@ -1,0 +1,169 @@
+name: Build and Deploy to ECS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: "ap-south-1"  # Define la región de AWS
+      REPO_NAME: "empenios"  # Nombre del repositorio ECR
+      FAMILY: "fmedina-task-definition2"  # Nombre de la task definition
+      CONTAINER_NAME: "devpocs"  # Nombre del contenedor
+      SERVICE_NAME: "pocEmpenio"  # Nombre del servicio ECS
+      CLUSTER_NAME: "devpocs"  # Nombre del cluster ECS
+      NEW_TAG: "latest"  # Nueva etiqueta para la imagen
+      VPC_ID: "vpc-05112db92c9fee37f"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login AWS ECR
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Obtener ACCOUNT_ID
+      run: |
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        echo $ACCOUNT_ID
+        echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV  
+
+    - name: Subir nueva versión de la imagen a ECR
+      run: |
+        ECR_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME
+        docker build -t $ECR_URI:$NEW_TAG .
+        docker push $ECR_URI:$NEW_TAG
+
+    - name: Registrar Task Definition (Validar si ya existe)
+      run: |
+        IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$NEW_TAG
+    
+        TASK_DEF_JSON=$(cat <<EOF
+        {
+        "family": "$FAMILY",
+        "taskRoleArn": "arn:aws:iam::904569689818:role/ecsTaskExecutionRole",
+        "executionRoleArn": "arn:aws:iam::904569689818:role/ecsTaskExecutionRole",
+        "networkMode": "bridge",
+        "requiresCompatibilities": ["EC2"],
+        "cpu": "256", 
+        "memory": "512",
+        "containerDefinitions": [
+          {
+            "name": "$CONTAINER_NAME",
+            "image": "$IMAGE_URI",
+            "memory": 512,
+            "cpu": 256,
+            "essential": true,
+            "portMappings": [
+                {
+                    "name": "fmedina-cluster-8080-tcp",
+                    "containerPort": 8080,
+                    "hostPort": 80,
+                    "protocol": "tcp"
+                }
+            ]
+          }
+        ]
+        }
+        EOF
+        )
+        echo "$TASK_DEF_JSON" > task-definition.json
+        # Verifica la validez del JSON
+        jq . task-definition.json || { echo "Error en el JSON de la tarea"; exit 1; }
+
+        # Registrar la definición de tarea
+        aws ecs register-task-definition --cli-input-json file://task-definition.json || { echo "Error al registrar la definición de tarea"; exit 1; }
+
+    - name: Crear Security Group
+      run: | 
+          SG_NAME="fmedina-sg"
+          echo "Creando el Security Group..."
+          SG_ID=$(aws ec2 create-security-group \
+            --group-name "$SG_NAME" \
+            --description "Security Group para ALB" \
+            --vpc-id "$VPC_ID" \
+            --query "GroupId" \
+            --output text)
+          echo "Security Group creado: $SG_ID"
+          echo "SG_ID=$SG_ID" >> $GITHUB_ENV
+
+          echo "Añadiendo reglas de tráfico al Security Group..."
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID" \
+            --protocol tcp \
+            --port 80 \
+            --cidr 0.0.0.0/0 # Abierto a todo el tráfico HTTP
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID" \
+            --protocol tcp \
+            --port 443 \
+            --cidr 0.0.0.0/0 # Abierto a todo el tráfico HTTPS
+
+    # Crear ALB
+    - name: Crear ALB
+      run: |
+        SUBNETS="subnet-054ec65949eaba532 subnet-0d40626f322c4a8d6" # Subredes separadas por espacio
+        ALB_NAME="fmedina-alb"
+
+        echo "Creando el ALB..."
+        ALB_ARN=$(aws elbv2 create-load-balancer \
+        --name "$ALB_NAME" \
+        --type application \
+        --security-groups "$SG_ID" \
+        --subnets $SUBNETS \
+        --query "LoadBalancers[0].LoadBalancerArn" \
+        --output text)
+        
+        echo "ALB creado: $ALB_ARN"
+        echo "ALB_ARN=$ALB_ARN" >> $GITHUB_ENV        
+
+    # Crear Target Group
+    - name: Crear Target Group
+      run: |
+        TARGET_GROUP_NAME="fmedina-tg"
+
+        echo "Creando el Target Group..."
+        TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
+        --name "$TARGET_GROUP_NAME" \
+        --protocol HTTP \
+        --port 80 \
+        --vpc-id "$VPC_ID" \
+        --target-type instance \
+        --query "TargetGroups[0].TargetGroupArn" \
+        --output text)
+        echo "Target Group creado: $TARGET_GROUP_ARN"
+        echo "TARGET_GROUP_ARN=$TARGET_GROUP_ARN" >> $GITHUB_ENV  
+        
+     # Crear Listener para el ALB
+    - name: Configurar Listener
+      run: |
+         echo "Creando Listener para el ALB..."
+         LISTENER_ARN=$(aws elbv2 create-listener \
+         --load-balancer-arn "$ALB_ARN" \
+         --protocol HTTP \
+         --port 80 \
+         --default-actions Type=forward,TargetGroupArn="$TARGET_GROUP_ARN" \
+         --query "Listeners[0].ListenerArn" \
+         --output text)
+         echo "Listener creado: $LISTENER_ARN"    
+
+    - name: Verificar si el servicio ya existe y actualizar o crear
+      run: |
+          echo "El servicio no existe. Creando el servicio..."
+          # Obtener la última task definition registrada
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $FAMILY | jq -r '.taskDefinition.taskDefinitionArn')
+          # Crear el servicio con la nueva task definition
+          aws ecs create-service --cluster $CLUSTER_NAME --service-name $SERVICE_NAME --task-definition $TASK_DEFINITION --desired-count 1 \
+          --load-balancers "targetGroupArn=$TARGET_GROUP_ARN,containerName=$CONTAINER_NAME,containerPort=8080" \
+         
