@@ -1,4 +1,11 @@
-export const { MONGO_CERT_BASE64 } = process.env 
-export const { MONGO_URL } = process.env
-export const { COLLECTION_NAME } = process.env
-export const { PORCENTAJE_PRESTAMO } = process.env
+const { MONGO_CERT_BASE64 } = process.env 
+const { MONGO_URL } = process.env
+const { COLLECTION_NAME } = process.env
+const { PORCENTAJE_PRESTAMO } = process.env
+
+module.exports = {
+  MONGO_CERT_BASE64,
+  MONGO_URL,
+  COLLECTION_NAME,
+  PORCENTAJE_PRESTAMO
+}
