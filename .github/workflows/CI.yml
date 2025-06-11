@@ -72,7 +72,25 @@ jobs:
                     "hostPort": 80,
                     "protocol": "tcp"
                 }
-            ]
+            ],
+            "secrets": [
+               {
+                  "name": "MONGO_CERT_BASE64",  // Variable de entorno en el contenedor
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/MONGO_CERT_BASE64"
+                },
+                {
+                  "name": "MONGO_URL",
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/MONGO_URL"
+                  },
+                  {
+                  "name": "COLLECTION_NAME",
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/COLLECTION_NAME"
+                  },
+                  {
+                  "name": "PORCENTAJE_PRESTAMO",
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/PORCENTAJE_PRESTAMO"
+                  }
+                  ]
           }
         ]
         }
@@ -87,7 +105,7 @@ jobs:
 
     - name: Crear Security Group
       run: | 
-          SG_NAME="poc-sg"
+          SG_NAME="poc1-sg"
           echo "Creando el Security Group..."
           SG_ID=$(aws ec2 create-security-group \
             --group-name "$SG_NAME" \
