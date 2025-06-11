@@ -16,7 +16,7 @@ jobs:
       SERVICE_NAME: pocEmpenio
       CLUSTER_NAME: devpocs
       NEW_TAG: latest
-      VPC_ID: vpc-004b7ee9447f8b3bf
+      VPC_ID: vpc-05112db92c9fee37f
 
     steps:
     - name: Checkout code
@@ -38,7 +38,6 @@ jobs:
         echo $ACCOUNT_ID
         echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
 
-    - name: Crear Log Group si no existe
       run: |
         LOG_GROUP="/ecs/$FAMILY"
         EXISTS=$(aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query "logGroups[?logGroupName=='$LOG_GROUP'] | length(@)" --output text)
@@ -157,7 +156,7 @@ jobs:
 
     - name: Crear ALB
       run: |
-        SUBNETS="subnet-0c8bf1a85ed0bcc6d"
+        SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc"
         ALB_NAME="poc1-alb"
         echo "Creando el ALB..."
         ALB_ARN=$(aws elbv2 create-load-balancer \
