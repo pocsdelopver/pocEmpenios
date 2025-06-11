@@ -132,7 +132,7 @@ jobs:
       - name: Crear ALB
         run: |
           SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc"
-          ALB_NAME="fmedina-alb"
+          ALB_NAME="poc1-alb"
           echo "Creando el ALB..."
           ALB_ARN=$(aws elbv2 create-load-balancer \
             --name "$ALB_NAME" \
