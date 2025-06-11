@@ -38,6 +38,7 @@ jobs:
         echo $ACCOUNT_ID
         echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
 
+    - name: Crear Log Group si no existen
       run: |
         LOG_GROUP="/ecs/$FAMILY"
         EXISTS=$(aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query "logGroups[?logGroupName=='$LOG_GROUP'] | length(@)" --output text)
