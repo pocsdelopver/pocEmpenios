@@ -113,7 +113,7 @@ jobs:
     # Crear ALB
     - name: Crear ALB
       run: |
-        SUBNETS="subnet-054ec65949eaba532 subnet-0d40626f322c4a8d6" # Subredes separadas por espacio
+        SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc" # Subredes separadas por espacio
         ALB_NAME="fmedina-alb"
 
         echo "Creando el ALB..."
