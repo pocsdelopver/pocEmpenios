@@ -106,7 +106,7 @@ jobs:
 
       - name: Crear Security Group
         run: |
-          SG_NAME="poc1-sg"
+          SG_NAME="poc2-sg"
           echo "Creando el Security Group..."
           SG_ID=$(aws ec2 create-security-group \
             --group-name "$SG_NAME" \
