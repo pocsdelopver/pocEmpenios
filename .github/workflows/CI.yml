@@ -64,6 +64,14 @@ jobs:
                 "memory": 512,
                 "cpu": 256,
                 "essential": true,
+                "logConfiguration": {
+                  "logDriver": "awslogs",
+                  "options": {
+                    "awslogs-group": "/ecs/$FAMILY",
+                    "awslogs-region": "$AWS_REGION",
+                    "awslogs-stream-prefix": "$CONTAINER_NAME"
+                  }
+                },
                 "portMappings": [
                   {
                     "name": "fmedina-cluster-8080-tcp",
@@ -136,47 +144,62 @@ jobs:
             fi
           done
 
-      - name: Crear ALB
+      - name: Crear ALB (si no existe)
         run: |
           SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc"
           ALB_NAME="poc1-alb"
-          echo "Creando el ALB..."
-          ALB_ARN=$(aws elbv2 create-load-balancer \
-            --name "$ALB_NAME" \
-            --type application \
-            --security-groups "$SG_ID" \
-            --subnets $SUBNETS \
-            --query "LoadBalancers[0].LoadBalancerArn" \
-            --output text)
-          echo "ALB creado: $ALB_ARN"
+          ALB_ARN=$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null)
+          if [ "$ALB_ARN" = "None" ] || [ -z "$ALB_ARN" ]; then
+            echo "Creando el ALB..."
+            ALB_ARN=$(aws elbv2 create-load-balancer \
+              --name "$ALB_NAME" \
+              --type application \
+              --security-groups "$SG_ID" \
+              --subnets $SUBNETS \
+              --query "LoadBalancers[0].LoadBalancerArn" \
+              --output text)
+            echo "ALB creado: $ALB_ARN"
+          else
+            echo "ALB ya existe: $ALB_ARN"
+          fi
           echo "ALB_ARN=$ALB_ARN" >> $GITHUB_ENV        
 
-      - name: Crear Target Group
+      - name: Crear Target Group (si no existe)
         run: |
           TARGET_GROUP_NAME="poc1-tg"
-          echo "Creando el Target Group..."
-          TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
-            --name "$TARGET_GROUP_NAME" \
-            --protocol HTTP \
-            --port 80 \
-            --vpc-id "$VPC_ID" \
-            --target-type instance \
-            --query "TargetGroups[0].TargetGroupArn" \
-            --output text)
-          echo "Target Group creado: $TARGET_GROUP_ARN"
+          TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups --names "$TARGET_GROUP_NAME" --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null)
+          if [ "$TARGET_GROUP_ARN" = "None" ] || [ -z "$TARGET_GROUP_ARN" ]; then
+            echo "Creando el Target Group..."
+            TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
+              --name "$TARGET_GROUP_NAME" \
+              --protocol HTTP \
+              --port 80 \
+              --vpc-id "$VPC_ID" \
+              --target-type instance \
+              --query "TargetGroups[0].TargetGroupArn" \
+              --output text)
+            echo "Target Group creado: $TARGET_GROUP_ARN"
+          else
+            echo "Target Group ya existe: $TARGET_GROUP_ARN"
+          fi
           echo "TARGET_GROUP_ARN=$TARGET_GROUP_ARN" >> $GITHUB_ENV  
 
-      - name: Configurar Listener
+      - name: Configurar Listener (si no existe)
         run: |
-          echo "Creando Listener para el ALB..."
-          LISTENER_ARN=$(aws elbv2 create-listener \
-            --load-balancer-arn "$ALB_ARN" \
-            --protocol HTTP \
-            --port 80 \
-            --default-actions Type=forward,TargetGroupArn="$TARGET_GROUP_ARN" \
-            --query "Listeners[0].ListenerArn" \
-            --output text)
-          echo "Listener creado: $LISTENER_ARN"    
+          LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query "Listeners[?Port==`80`].ListenerArn" --output text 2>/dev/null)
+          if [ -z "$LISTENER_ARN" ]; then
+            echo "Creando Listener para el ALB..."
+            LISTENER_ARN=$(aws elbv2 create-listener \
+              --load-balancer-arn "$ALB_ARN" \
+              --protocol HTTP \
+              --port 80 \
+              --default-actions Type=forward,TargetGroupArn="$TARGET_GROUP_ARN" \
+              --query "Listeners[0].ListenerArn" \
+              --output text)
+            echo "Listener creado: $LISTENER_ARN"
+          else
+            echo "Listener ya existe: $LISTENER_ARN"
+          fi
 
       - name: Verificar si el servicio ya existe y actualizar o crear
         run: |
