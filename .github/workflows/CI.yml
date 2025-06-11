@@ -87,7 +87,7 @@ jobs:
 
     - name: Crear Security Group
       run: | 
-          SG_NAME="fmedina-sg"
+          SG_NAME="poc-sg"
           echo "Creando el Security Group..."
           SG_ID=$(aws ec2 create-security-group \
             --group-name "$SG_NAME" \
@@ -131,7 +131,7 @@ jobs:
     # Crear Target Group
     - name: Crear Target Group
       run: |
-        TARGET_GROUP_NAME="fmedina-tg"
+        TARGET_GROUP_NAME="poc-tg"
 
         echo "Creando el Target Group..."
         TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
