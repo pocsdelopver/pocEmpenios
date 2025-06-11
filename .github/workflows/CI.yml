@@ -172,7 +172,7 @@ jobs:
 
       - name: Crear Target Group
         run: |
-          TARGET_GROUP_NAME="poc1-tg"
+          TARGET_GROUP_NAME="poc2-tg"
           echo "Creando el Target Group..."
           TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
             --name "$TARGET_GROUP_NAME" \
