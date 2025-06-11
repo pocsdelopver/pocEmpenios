@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: "ap-south-1"  # Define la región de AWS
+      AWS_REGION: "us-east-1"  # Define la región de AWS
       REPO_NAME: "empenios"  # Nombre del repositorio ECR
       FAMILY: "fmedina-task-definition2"  # Nombre de la task definition
       CONTAINER_NAME: "devpocs"  # Nombre del contenedor
