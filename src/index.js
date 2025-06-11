@@ -7,7 +7,7 @@ const log = require('./commons/logger')
 app.use(express.json());
 app.use('/api/v1', prestamosRoutes);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 MongoConection.createConnection().then(() => {
   log.info('Conetado a MongoBD...')

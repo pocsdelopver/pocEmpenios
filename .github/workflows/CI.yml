@@ -3,7 +3,7 @@ name: Build and Deploy to ECS
 on:
   push:
     branches:
-      - main
+    - main
 
 jobs:
   build-and-deploy:
@@ -19,202 +19,202 @@ jobs:
       VPC_ID: vpc-05112db92c9fee37f
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Configure AWS CLI
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login AWS ECR
-        uses: aws-actions/amazon-ecr-login@v2
+    - name: Login AWS ECR
+      uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Obtener ACCOUNT_ID
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          echo $ACCOUNT_ID
-          echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
-      
-      - name: Crear Log Group si no existe
-        run: |
-          LOG_GROUP="/ecs/$FAMILY"
-          EXISTS=$(aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query "logGroups[?logGroupName=='$LOG_GROUP'] | length(@)" --output text)
-          if [ "$EXISTS" = "0" ]; then
-            echo "Creando log group $LOG_GROUP"
-            aws logs create-log-group --log-group-name "$LOG_GROUP"
-          else
-            echo "El log group $LOG_GROUP ya existe"
-          fi
+    - name: Obtener ACCOUNT_ID
+      run: |
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        echo $ACCOUNT_ID
+        echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
 
-      - name: Subir nueva versión de la imagen a ECR
-        run: |
-          ECR_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME
-          docker build -t $ECR_URI:$NEW_TAG .
-          docker push $ECR_URI:$NEW_TAG
+    - name: Crear Log Group si no existe
+      run: |
+        LOG_GROUP="/ecs/$FAMILY"
+        EXISTS=$(aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query "logGroups[?logGroupName=='$LOG_GROUP'] | length(@)" --output text)
+        if [ "$EXISTS" = "0" ]; then
+          echo "Creando log group $LOG_GROUP"
+          aws logs create-log-group --log-group-name "$LOG_GROUP"
+        else
+          echo "El log group $LOG_GROUP ya existe"
+        fi
 
-      - name: Registrar Task Definition (Validar si ya existe)
-        run: |
-          IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$NEW_TAG
+    - name: Subir nueva versión de la imagen a ECR
+      run: |
+        ECR_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME
+        docker build -t $ECR_URI:$NEW_TAG .
+        docker push $ECR_URI:$NEW_TAG
 
-          TASK_DEF_JSON=$(cat <<EOF
-          {
-            "family": "$FAMILY",
-            "taskRoleArn": "arn:aws:iam::495599766502:role/myECSTaskRole",
-            "executionRoleArn": "arn:aws:iam::495599766502:role/ecsTaskExecutionRole",
-            "networkMode": "bridge",
-            "requiresCompatibilities": ["EC2"],
-            "cpu": "256",
-            "memory": "512",
-            "containerDefinitions": [
-              {
-                "name": "$CONTAINER_NAME",
-                "image": "$IMAGE_URI",
-                "memory": 512,
-                "cpu": 256,
-                "essential": true,
-                 "logConfiguration": {
-                  "logDriver": "awslogs",
-                  "options": {
-                    "awslogs-group": "/ecs/$FAMILY",
-                    "awslogs-region": "$AWS_REGION",
-                    "awslogs-stream-prefix": "$CONTAINER_NAME"
-                  }
+    - name: Registrar Task Definition (Validar si ya existe)
+      run: |
+        IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$NEW_TAG
+
+        TASK_DEF_JSON=$(cat <<EOF
+        {
+          "family": "$FAMILY",
+          "taskRoleArn": "arn:aws:iam::495599766502:role/myECSTaskRole",
+          "executionRoleArn": "arn:aws:iam::495599766502:role/ecsTaskExecutionRole",
+          "networkMode": "bridge",
+          "requiresCompatibilities": ["EC2"],
+          "cpu": "256",
+          "memory": "512",
+          "containerDefinitions": [
+            {
+              "name": "$CONTAINER_NAME",
+              "image": "$IMAGE_URI",
+              "memory": 512,
+              "cpu": 256,
+              "essential": true,
+               "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                  "awslogs-group": "/ecs/$FAMILY",
+                  "awslogs-region": "$AWS_REGION",
+                  "awslogs-stream-prefix": "$CONTAINER_NAME"
+                }
+              },
+              "portMappings": [
+                {
+                  "name": "fmedina-cluster-8080-tcp",
+                  "containerPort": 8080,
+                  "hostPort": 80,
+                  "protocol": "tcp"
+                }
+              ],
+              "secrets": [
+                {
+                  "name": "MONGO_CERT_BASE64",
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/MONGO_CERT_BASE64"
                 },
-                "portMappings": [
-                  {
-                    "name": "fmedina-cluster-8080-tcp",
-                    "containerPort": 3000,
-                    "hostPort": 3000,
-                    "protocol": "tcp"
-                  }
-                ],
-                "secrets": [
-                  {
-                    "name": "MONGO_CERT_BASE64",
-                    "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/MONGO_CERT_BASE64"
-                  },
-                  {
-                    "name": "MONGO_URL",
-                    "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/MONGO_URL"
-                  },
-                  {
-                    "name": "COLLECTION_NAME",
-                    "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/COLLECTION_NAME"
-                  },
-                  {
-                    "name": "PORCENTAJE_PRESTAMO",
-                    "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/PORCENTAJE_PRESTAMO"
-                  }
-                ]
-              }
-            ]
-          }
-          EOF
-          )
+                {
+                  "name": "MONGO_URL",
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/MONGO_URL"
+                },
+                {
+                  "name": "COLLECTION_NAME",
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/COLLECTION_NAME"
+                },
+                {
+                  "name": "PORCENTAJE_PRESTAMO",
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/pocEmpenio/PORCENTAJE_PRESTAMO"
+                }
+              ]
+            }
+          ]
+        }
+        EOF
+        )
 
-          echo "$TASK_DEF_JSON" > task-definition.json
+        echo "$TASK_DEF_JSON" > task-definition.json
 
-          # Verifica la validez del JSON
-          jq . task-definition.json || { echo "Error en el JSON de la tarea"; exit 1; }
+        # Verifica la validez del JSON
+        jq . task-definition.json || { echo "Error en el JSON de la tarea"; exit 1; }
 
-          # Registrar la definición de tarea
-          aws ecs register-task-definition --cli-input-json file://task-definition.json || { echo "Error al registrar la definición de tarea"; exit 1; }
+        # Registrar la definición de tarea
+        aws ecs register-task-definition --cli-input-json file://task-definition.json || { echo "Error al registrar la definición de tarea"; exit 1; }
 
-      - name: Crear Security Group (si no existe)
-        run: |
-          SG_NAME="poc2-sg"
-          SG_ID=$(aws ec2 describe-security-groups \
-            --filters Name=group-name,Values="$SG_NAME" Name=vpc-id,Values="$VPC_ID" \
-            --query "SecurityGroups[0].GroupId" --output text)
-          if [ "$SG_ID" = "None" ]; then
-            echo "Creando el Security Group..."
-            SG_ID=$(aws ec2 create-security-group \
-              --group-name "$SG_NAME" \
-              --description "Security Group para ALB" \
-              --vpc-id "$VPC_ID" \
-              --query "GroupId" \
-              --output text)
-            echo "Security Group creado: $SG_ID"
-          else
-            echo "Security Group ya existe: $SG_ID"
-          fi
-          echo "SG_ID=$SG_ID" >> $GITHUB_ENV
-
-          # Añadir reglas solo si no existen
-          for port in 3000 443; do
-            EXISTS=$(aws ec2 describe-security-group-rules --filters Name=group-id,Values="$SG_ID" Name=from-port,Values="$port" Name=to-port,Values="$port" Name=cidr,Values="0.0.0.0/0" --query "SecurityGroupRules" --output json | jq 'length')
-            if [ "$EXISTS" -eq 0 ]; then
-              aws ec2 authorize-security-group-ingress \
-                --group-id "$SG_ID" \
-                --protocol tcp \
-                --port $port \
-                --cidr 0.0.0.0/0
-            fi
-          done
-
-      - name: Crear ALB
-        run: |
-          SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc"
-          ALB_NAME="poc1-alb"
-          echo "Creando el ALB..."
-          ALB_ARN=$(aws elbv2 create-load-balancer \
-            --name "$ALB_NAME" \
-            --type application \
-            --security-groups "$SG_ID" \
-            --subnets $SUBNETS \
-            --query "LoadBalancers[0].LoadBalancerArn" \
-            --output text)
-          echo "ALB creado: $ALB_ARN"
-          echo "ALB_ARN=$ALB_ARN" >> $GITHUB_ENV        
-
-      - name: Crear Target Group
-        run: |
-          TARGET_GROUP_NAME="poc2-tg"
-          echo "Creando el Target Group..."
-          TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
-            --name "$TARGET_GROUP_NAME" \
-            --protocol HTTP \
-            --port 3000 \
+    - name: Crear Security Group (si no existe)
+      run: |
+        SG_NAME="poc2-sg"
+        SG_ID=$(aws ec2 describe-security-groups \
+          --filters Name=group-name,Values="$SG_NAME" Name=vpc-id,Values="$VPC_ID" \
+          --query "SecurityGroups[0].GroupId" --output text)
+        if [ "$SG_ID" = "None" ]; then
+          echo "Creando el Security Group..."
+          SG_ID=$(aws ec2 create-security-group \
+            --group-name "$SG_NAME" \
+            --description "Security Group para ALB" \
             --vpc-id "$VPC_ID" \
-            --target-type instance \
-            --query "TargetGroups[0].TargetGroupArn" \
+            --query "GroupId" \
             --output text)
-          echo "Target Group creado: $TARGET_GROUP_ARN"
-          echo "TARGET_GROUP_ARN=$TARGET_GROUP_ARN" >> $GITHUB_ENV  
+          echo "Security Group creado: $SG_ID"
+        else
+          echo "Security Group ya existe: $SG_ID"
+        fi
+        echo "SG_ID=$SG_ID" >> $GITHUB_ENV
 
-      - name: Configurar Listener
-        run: |
-          echo "Creando Listener para el ALB..."
-          LISTENER_ARN=$(aws elbv2 create-listener \
-            --load-balancer-arn "$ALB_ARN" \
-            --protocol HTTP \
-            --port 3000 \
-            --default-actions Type=forward,TargetGroupArn="$TARGET_GROUP_ARN" \
-            --query "Listeners[0].ListenerArn" \
-            --output text)
-          echo "Listener creado: $LISTENER_ARN"    
-
-      - name: Verificar si el servicio ya existe y actualizar o crear
-        run: |
-          SERVICE_EXISTS=$(aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME --query "services[0].status" --output text)
-          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $FAMILY | jq -r '.taskDefinition.taskDefinitionArn')
-
-          if [ "$SERVICE_EXISTS" = "ACTIVE" ]; then
-            echo "El servicio ya existe. Actualizando..."
-            aws ecs update-service \
-              --cluster $CLUSTER_NAME \
-              --service $SERVICE_NAME \
-              --task-definition $TASK_DEFINITION \
-              --desired-count 1
-          else
-            echo "El servicio no existe. Creando..."
-            aws ecs create-service \
-              --cluster $CLUSTER_NAME \
-              --service-name $SERVICE_NAME \
-              --task-definition $TASK_DEFINITION \
-              --desired-count 1 \
-              --load-balancers "targetGroupArn=$TARGET_GROUP_ARN,containerName=$CONTAINER_NAME,containerPort=3000"
+        # Añadir reglas solo si no existen
+        for port in 80 443; do
+          EXISTS=$(aws ec2 describe-security-group-rules --filters Name=group-id,Values="$SG_ID" Name=from-port,Values="$port" Name=to-port,Values="$port" Name=cidr,Values="0.0.0.0/0" --query "SecurityGroupRules" --output json | jq 'length')
+          if [ "$EXISTS" -eq 0 ]; then
+            aws ec2 authorize-security-group-ingress \
+              --group-id "$SG_ID" \
+              --protocol tcp \
+              --port $port \
+              --cidr 0.0.0.0/0
           fi
+        done
+
+    - name: Crear ALB
+      run: |
+        SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc"
+        ALB_NAME="poc1-alb"
+        echo "Creando el ALB..."
+        ALB_ARN=$(aws elbv2 create-load-balancer \
+          --name "$ALB_NAME" \
+          --type application \
+          --security-groups "$SG_ID" \
+          --subnets $SUBNETS \
+          --query "LoadBalancers[0].LoadBalancerArn" \
+          --output text)
+        echo "ALB creado: $ALB_ARN"
+        echo "ALB_ARN=$ALB_ARN" >> $GITHUB_ENV        
+
+    - name: Crear Target Group
+      run: |
+        TARGET_GROUP_NAME="poc1-tg"
+        echo "Creando el Target Group..."
+        TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
+          --name "$TARGET_GROUP_NAME" \
+          --protocol HTTP \
+          --port 80 \
+          --vpc-id "$VPC_ID" \
+          --target-type instance \
+          --query "TargetGroups[0].TargetGroupArn" \
+          --output text)
+        echo "Target Group creado: $TARGET_GROUP_ARN"
+        echo "TARGET_GROUP_ARN=$TARGET_GROUP_ARN" >> $GITHUB_ENV  
+
+    - name: Configurar Listener
+      run: |
+        echo "Creando Listener para el ALB..."
+        LISTENER_ARN=$(aws elbv2 create-listener \
+          --load-balancer-arn "$ALB_ARN" \
+          --protocol HTTP \
+          --port 80 \
+          --default-actions Type=forward,TargetGroupArn="$TARGET_GROUP_ARN" \
+          --query "Listeners[0].ListenerArn" \
+          --output text)
+        echo "Listener creado: $LISTENER_ARN"    
+
+    - name: Verificar si el servicio ya existe y actualizar o crear
+      run: |
+        SERVICE_EXISTS=$(aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME --query "services[0].status" --output text)
+        TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $FAMILY | jq -r '.taskDefinition.taskDefinitionArn')
+
+        if [ "$SERVICE_EXISTS" = "ACTIVE" ]; then
+          echo "El servicio ya existe. Actualizando..."
+          aws ecs update-service \
+            --cluster $CLUSTER_NAME \
+            --service $SERVICE_NAME \
+            --task-definition $TASK_DEFINITION \
+            --desired-count 1
+        else
+          echo "El servicio no existe. Creando..."
+          aws ecs create-service \
+            --cluster $CLUSTER_NAME \
+            --service-name $SERVICE_NAME \
+            --task-definition $TASK_DEFINITION \
+            --desired-count 1 \
+            --load-balancers "targetGroupArn=$TARGET_GROUP_ARN,containerName=$CONTAINER_NAME,containerPort=8080"
+        fi
