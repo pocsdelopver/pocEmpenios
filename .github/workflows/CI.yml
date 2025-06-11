@@ -144,7 +144,7 @@ jobs:
           echo "SG_ID=$SG_ID" >> $GITHUB_ENV
 
           # Añadir reglas solo si no existen
-          for port in 80 443; do
+          for port in 3000 443; do
             EXISTS=$(aws ec2 describe-security-group-rules --filters Name=group-id,Values="$SG_ID" Name=from-port,Values="$port" Name=to-port,Values="$port" Name=cidr,Values="0.0.0.0/0" --query "SecurityGroupRules" --output json | jq 'length')
             if [ "$EXISTS" -eq 0 ]; then
               aws ec2 authorize-security-group-ingress \
@@ -191,7 +191,7 @@ jobs:
           LISTENER_ARN=$(aws elbv2 create-listener \
             --load-balancer-arn "$ALB_ARN" \
             --protocol HTTP \
-            --port 80 \
+            --port 3000 \
             --default-actions Type=forward,TargetGroupArn="$TARGET_GROUP_ARN" \
             --query "Listeners[0].ListenerArn" \
             --output text)
@@ -216,5 +216,5 @@ jobs:
               --service-name $SERVICE_NAME \
               --task-definition $TASK_DEFINITION \
               --desired-count 1 \
-              --load-balancers "targetGroupArn=$TARGET_GROUP_ARN,containerName=$CONTAINER_NAME,containerPort=8080"
+              --load-balancers "targetGroupArn=$TARGET_GROUP_ARN,containerName=$CONTAINER_NAME,containerPort=3000"
           fi
