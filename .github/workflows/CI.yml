@@ -180,9 +180,12 @@ jobs:
 
       - name: Verificar si el servicio ya existe y actualizar o crear
         run: |
-          echo "El servicio no existe. Creando el servicio..."
-          # Obtener la última task definition registrada
+          SERVICE_EXISTS=$(aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME --query "services[0].status" --output text)
           TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $FAMILY | jq -r '.taskDefinition.taskDefinitionArn')
-          # Crear el servicio con la nueva task definition
-          aws ecs create-service --cluster $CLUSTER_NAME --service-name $SERVICE_NAME --task-definition $TASK_DEFINITION --desired-count 1 \
-            --load-balancers "targetGroupArn=$TARGET_GROUP_ARN,containerName=$CONTAINER_NAME,containerPort=8080"
+
+          if [ "$SERVICE_EXISTS" = "ACTIVE" ]; then
+            echo "El servicio ya existe. Actualizando..."
+            aws ecs update-service \
+              --cluster $CLUSTER_NAME \
+              --service $SERVICE_NAME \
+              --task-definition $TASK_DEFINITION \
