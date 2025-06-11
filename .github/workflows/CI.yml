@@ -52,8 +52,8 @@ jobs:
         TASK_DEF_JSON=$(cat <<EOF
         {
         "family": "$FAMILY",
-        "taskRoleArn": "arn:aws:iam::904569689818:role/ecsTaskExecutionRole",
-        "executionRoleArn": "arn:aws:iam::904569689818:role/ecsTaskExecutionRole",
+        "taskRoleArn": "arn:aws:iam::495599766502:role/myECSTaskRole",
+        "executionRoleArn": "arn:aws:iam::495599766502:role/ecsTaskExecutionRole",
         "networkMode": "bridge",
         "requiresCompatibilities": ["EC2"],
         "cpu": "256", 
