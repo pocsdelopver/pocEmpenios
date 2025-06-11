@@ -36,7 +36,18 @@ jobs:
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           echo $ACCOUNT_ID
-          echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV  
+          echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
+      
+      - name: Crear Log Group si no existe
+        run: |
+          LOG_GROUP="/ecs/$FAMILY"
+          EXISTS=$(aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query "logGroups[?logGroupName=='$LOG_GROUP'] | length(@)" --output text)
+          if [ "$EXISTS" = "0" ]; then
+            echo "Creando log group $LOG_GROUP"
+            aws logs create-log-group --log-group-name "$LOG_GROUP"
+          else
+            echo "El log group $LOG_GROUP ya existe"
+          fi
 
       - name: Subir nueva versión de la imagen a ECR
         run: |
