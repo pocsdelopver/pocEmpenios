@@ -16,7 +16,7 @@ jobs:
       SERVICE_NAME: pocEmpenio
       CLUSTER_NAME: devpocs
       NEW_TAG: latest
-      VPC_ID: vpc-05112db92c9fee37f
+      VPC_ID: vpc-004b7ee9447f8b3bf
 
     steps:
     - name: Checkout code
@@ -157,7 +157,7 @@ jobs:
 
     - name: Crear ALB
       run: |
-        SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc"
+        SUBNETS="subnet-0c8bf1a85ed0bcc6d"
         ALB_NAME="poc1-alb"
         echo "Creando el ALB..."
         ALB_ARN=$(aws elbv2 create-load-balancer \
