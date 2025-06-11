@@ -104,30 +104,37 @@ jobs:
           # Registrar la definición de tarea
           aws ecs register-task-definition --cli-input-json file://task-definition.json || { echo "Error al registrar la definición de tarea"; exit 1; }
 
-      - name: Crear Security Group
+      - name: Crear Security Group (si no existe)
         run: |
           SG_NAME="poc2-sg"
-          echo "Creando el Security Group..."
-          SG_ID=$(aws ec2 create-security-group \
-            --group-name "$SG_NAME" \
-            --description "Security Group para ALB" \
-            --vpc-id "$VPC_ID" \
-            --query "GroupId" \
-            --output text)
-          echo "Security Group creado: $SG_ID"
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters Name=group-name,Values="$SG_NAME" Name=vpc-id,Values="$VPC_ID" \
+            --query "SecurityGroups[0].GroupId" --output text)
+          if [ "$SG_ID" = "None" ]; then
+            echo "Creando el Security Group..."
+            SG_ID=$(aws ec2 create-security-group \
+              --group-name "$SG_NAME" \
+              --description "Security Group para ALB" \
+              --vpc-id "$VPC_ID" \
+              --query "GroupId" \
+              --output text)
+            echo "Security Group creado: $SG_ID"
+          else
+            echo "Security Group ya existe: $SG_ID"
+          fi
           echo "SG_ID=$SG_ID" >> $GITHUB_ENV
 
-          echo "Añadiendo reglas de tráfico al Security Group..."
-          aws ec2 authorize-security-group-ingress \
-            --group-id "$SG_ID" \
-            --protocol tcp \
-            --port 80 \
-            --cidr 0.0.0.0/0
-          aws ec2 authorize-security-group-ingress \
-            --group-id "$SG_ID" \
-            --protocol tcp \
-            --port 443 \
-            --cidr 0.0.0.0/0
+          # Añadir reglas solo si no existen
+          for port in 80 443; do
+            EXISTS=$(aws ec2 describe-security-group-rules --filters Name=group-id,Values="$SG_ID" Name=from-port,Values="$port" Name=to-port,Values="$port" Name=cidr,Values="0.0.0.0/0" --query "SecurityGroupRules" --output json | jq 'length')
+            if [ "$EXISTS" -eq 0 ]; then
+              aws ec2 authorize-security-group-ingress \
+                --group-id "$SG_ID" \
+                --protocol tcp \
+                --port $port \
+                --cidr 0.0.0.0/0
+            fi
+          done
 
       - name: Crear ALB
         run: |
