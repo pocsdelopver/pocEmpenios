@@ -189,3 +189,13 @@ jobs:
               --cluster $CLUSTER_NAME \
               --service $SERVICE_NAME \
               --task-definition $TASK_DEFINITION \
+              --desired-count 1
+          else
+            echo "El servicio no existe. Creando..."
+            aws ecs create-service \
+              --cluster $CLUSTER_NAME \
+              --service-name $SERVICE_NAME \
+              --task-definition $TASK_DEFINITION \
+              --desired-count 1 \
+              --load-balancers "targetGroupArn=$TARGET_GROUP_ARN,containerName=$CONTAINER_NAME,containerPort=8080"
+          fi
