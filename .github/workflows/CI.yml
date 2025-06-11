@@ -64,7 +64,7 @@ jobs:
                 "memory": 512,
                 "cpu": 256,
                 "essential": true,
-                "logConfiguration": {
+                 "logConfiguration": {
                   "logDriver": "awslogs",
                   "options": {
                     "awslogs-group": "/ecs/$FAMILY",
@@ -144,62 +144,47 @@ jobs:
             fi
           done
 
-      - name: Crear ALB (si no existe)
+      - name: Crear ALB
         run: |
           SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc"
           ALB_NAME="poc1-alb"
-          ALB_ARN=$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null)
-          if [ "$ALB_ARN" = "None" ] || [ -z "$ALB_ARN" ]; then
-            echo "Creando el ALB..."
-            ALB_ARN=$(aws elbv2 create-load-balancer \
-              --name "$ALB_NAME" \
-              --type application \
-              --security-groups "$SG_ID" \
-              --subnets $SUBNETS \
-              --query "LoadBalancers[0].LoadBalancerArn" \
-              --output text)
-            echo "ALB creado: $ALB_ARN"
-          else
-            echo "ALB ya existe: $ALB_ARN"
-          fi
+          echo "Creando el ALB..."
+          ALB_ARN=$(aws elbv2 create-load-balancer \
+            --name "$ALB_NAME" \
+            --type application \
+            --security-groups "$SG_ID" \
+            --subnets $SUBNETS \
+            --query "LoadBalancers[0].LoadBalancerArn" \
+            --output text)
+          echo "ALB creado: $ALB_ARN"
           echo "ALB_ARN=$ALB_ARN" >> $GITHUB_ENV        
 
-      - name: Crear Target Group (si no existe)
+      - name: Crear Target Group
         run: |
           TARGET_GROUP_NAME="poc1-tg"
-          TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups --names "$TARGET_GROUP_NAME" --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null)
-          if [ "$TARGET_GROUP_ARN" = "None" ] || [ -z "$TARGET_GROUP_ARN" ]; then
-            echo "Creando el Target Group..."
-            TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
-              --name "$TARGET_GROUP_NAME" \
-              --protocol HTTP \
-              --port 80 \
-              --vpc-id "$VPC_ID" \
-              --target-type instance \
-              --query "TargetGroups[0].TargetGroupArn" \
-              --output text)
-            echo "Target Group creado: $TARGET_GROUP_ARN"
-          else
-            echo "Target Group ya existe: $TARGET_GROUP_ARN"
-          fi
+          echo "Creando el Target Group..."
+          TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
+            --name "$TARGET_GROUP_NAME" \
+            --protocol HTTP \
+            --port 80 \
+            --vpc-id "$VPC_ID" \
+            --target-type instance \
+            --query "TargetGroups[0].TargetGroupArn" \
+            --output text)
+          echo "Target Group creado: $TARGET_GROUP_ARN"
           echo "TARGET_GROUP_ARN=$TARGET_GROUP_ARN" >> $GITHUB_ENV  
 
-      - name: Configurar Listener (si no existe)
+      - name: Configurar Listener
         run: |
-          LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query "Listeners[?Port==`80`].ListenerArn" --output text 2>/dev/null)
-          if [ -z "$LISTENER_ARN" ]; then
-            echo "Creando Listener para el ALB..."
-            LISTENER_ARN=$(aws elbv2 create-listener \
-              --load-balancer-arn "$ALB_ARN" \
-              --protocol HTTP \
-              --port 80 \
-              --default-actions Type=forward,TargetGroupArn="$TARGET_GROUP_ARN" \
-              --query "Listeners[0].ListenerArn" \
-              --output text)
-            echo "Listener creado: $LISTENER_ARN"
-          else
-            echo "Listener ya existe: $LISTENER_ARN"
-          fi
+          echo "Creando Listener para el ALB..."
+          LISTENER_ARN=$(aws elbv2 create-listener \
+            --load-balancer-arn "$ALB_ARN" \
+            --protocol HTTP \
+            --port 80 \
+            --default-actions Type=forward,TargetGroupArn="$TARGET_GROUP_ARN" \
+            --query "Listeners[0].ListenerArn" \
+            --output text)
+          echo "Listener creado: $LISTENER_ARN"    
 
       - name: Verificar si el servicio ya existe y actualizar o crear
         run: |
