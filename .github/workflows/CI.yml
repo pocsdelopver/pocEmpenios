@@ -107,6 +107,10 @@ jobs:
                 {
                   "name": "PORCENTAJE_PRESTAMO",
                   "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/$SERVICE_NAME/PORCENTAJE_PRESTAMO"
+                },
+                {
+                  "name": "URL_TOKENS",
+                  "valueFrom": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/$SERVICE_NAME/URL_TOKENS"
                 }
               ]
             }
