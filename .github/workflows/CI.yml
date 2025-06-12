@@ -158,7 +158,7 @@ jobs:
     - name: Crear ALB
       run: |
         SUBNETS="subnet-03aee90534719df72 subnet-03c8a87ed3d29dcdb"
-        ALB_NAME="poc-empenios-alb1"
+        ALB_NAME="poc-empenios-alb2"
         echo "Creando el ALB..."
         ALB_ARN=$(aws elbv2 create-load-balancer \
           --name "$ALB_NAME" \
@@ -172,12 +172,12 @@ jobs:
 
     - name: Crear Target Group
       run: |
-        TARGET_GROUP_NAME="poc-empenio-tg1"
+        TARGET_GROUP_NAME="poc-empenio-tg2"
         echo "Creando el Target Group..."
         TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
           --name "$TARGET_GROUP_NAME" \
           --protocol HTTP \
-          --port 8080 \
+          --port 80 \
           --vpc-id "$VPC_ID" \
           --target-type instance \
           --query "TargetGroups[0].TargetGroupArn" \
