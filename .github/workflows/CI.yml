@@ -9,14 +9,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: us-east-1
+      AWS_REGION: ap-south-1
       REPO_NAME: empenios
-      FAMILY: fmedina-task-definition2
-      CONTAINER_NAME: devpocs
-      SERVICE_NAME: pocEmpenio
-      CLUSTER_NAME: devpocs
+      FAMILY: poc-mumbia-task
+      CONTAINER_NAME: empenios
+      SERVICE_NAME: poc-mumbia-task-service-6kwhld0s
+      CLUSTER_NAME: pocs-developer
       NEW_TAG: latest
-      VPC_ID: vpc-05112db92c9fee37f
+      VPC_ID: vpc-03941750174bfc8da
 
     steps:
     - name: Checkout code
@@ -38,7 +38,7 @@ jobs:
         echo $ACCOUNT_ID
         echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
 
-    - name: Crear Log Group si no existen
+    - name: Crear Log Group si no existe
       run: |
         LOG_GROUP="/ecs/$FAMILY"
         EXISTS=$(aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query "logGroups[?logGroupName=='$LOG_GROUP'] | length(@)" --output text)
@@ -85,7 +85,7 @@ jobs:
               },
               "portMappings": [
                 {
-                  "name": "fmedina-cluster-8080-tcp",
+                  "name": "cluster-8080-tcp",
                   "containerPort": 8080,
                   "hostPort": 80,
                   "protocol": "tcp"
@@ -125,7 +125,7 @@ jobs:
 
     - name: Crear Security Group (si no existe)
       run: |
-        SG_NAME="poc2-sg"
+        SG_NAME="launch-wizard-1"
         SG_ID=$(aws ec2 describe-security-groups \
           --filters Name=group-name,Values="$SG_NAME" Name=vpc-id,Values="$VPC_ID" \
           --query "SecurityGroups[0].GroupId" --output text)
@@ -157,8 +157,8 @@ jobs:
 
     - name: Crear ALB
       run: |
-        SUBNETS="subnet-04b4f971ae5685839 subnet-02dcc782e293babcc"
-        ALB_NAME="poc1-alb"
+        SUBNETS="subnet-03aee90534719df72 subnet-03c8a87ed3d29dcdb"
+        ALB_NAME="poc-empenios-alb"
         echo "Creando el ALB..."
         ALB_ARN=$(aws elbv2 create-load-balancer \
           --name "$ALB_NAME" \
@@ -172,7 +172,7 @@ jobs:
 
     - name: Crear Target Group
       run: |
-        TARGET_GROUP_NAME="poc1-tg"
+        TARGET_GROUP_NAME="poc-empenio-tg1poc1-tg"
         echo "Creando el Target Group..."
         TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
           --name "$TARGET_GROUP_NAME" \
