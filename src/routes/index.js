@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const ProductController = require('../controllers/product.controller')
 const EmpenioController = require('../controllers/empenio.controller')
-const authenticateToken = require('../middleware/auth.middleware')
+const AuthenticateMiddleware = require('../middleware/auth.middleware')
 
 // Crear un producto
 router.post('/products', ProductController.createProduct)
@@ -19,6 +19,6 @@ router.put('/products/:id', ProductController.updateProduct)
 // Eliminar un producto por ID
 router.delete('/products/:id', ProductController.deleteProduct)
 
-router.post('/prestamo', authenticateToken, EmpenioController.calcularEmpenio)
+router.post('/prestamo', AuthenticateMiddleware.authenticateToken, EmpenioController.calcularEmpenio)
 
 module.exports = router

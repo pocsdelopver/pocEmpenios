@@ -12,4 +12,7 @@ const authenticateToken = async (req, res, next) => {
      next()
 }
 
-module.exports = authenticateToken
+const AuthenticateMiddleware = {
+    authenticateToken
+}
+module.exports = AuthenticateMiddleware

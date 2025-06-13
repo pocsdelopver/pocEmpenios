@@ -1,7 +1,7 @@
 const chai = require('chai');
 const sinon = require('sinon');
 const expect = chai.expect;
-const authenticateToken = require('../../src/middleware/auth.middleware');
+const AuthenticateMiddleware = require('../../src/middleware/auth.middleware');
 const TokenService = require('../../src/services/tokens.service');
 const log = require('../../src/commons/logger');
 
@@ -32,7 +32,7 @@ describe('Auth Middleware', () => {
         sandbox.stub(log, 'debug');
         sandbox.stub(log, 'error');
 
-        await authenticateToken(req, res, next);
+        await AuthenticateMiddleware.authenticateToken(req, res, next);
 
         expect(TokenService.validateToken.calledWith('Bearer mock-token')).to.be.true;
         expect(next.calledOnce).to.be.true;
@@ -48,7 +48,7 @@ describe('Auth Middleware', () => {
         sandbox.stub(log, 'debug');
         sandbox.stub(log, 'error');
 
-        await authenticateToken(req, res, next);
+        await AuthenticateMiddleware.authenticateToken(req, res, next);
 
         expect(TokenService.validateToken.calledWith('Bearer mock-token')).to.be.true;
         expect(next.called).to.be.false;
