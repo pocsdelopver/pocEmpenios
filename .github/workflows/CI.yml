@@ -25,10 +25,10 @@ jobs:
 
     - name: Run tests with coverage
       env:
-        MONGO_URL:'mongodb+srv://pocsdeveloper:u7pzqGRwE1lp2Vsq@pocnmp.3p3hvru.mongodb.net/'
-        COLLECTION_NAME:'products'
-        PORCENTAJE_PRESTAMO:'0.8'
-        URL_TOKENS:'http://poc-tokens-alb1-267066518.ap-south-1.elb.amazonaws.com/validaToken'
+        MONGO_URL: 'mongodb+srv://pocsdeveloper:u7pzqGRwE1lp2Vsq@pocnmp.3p3hvru.mongodb.net/'
+        COLLECTION_NAME: 'products'
+        PORCENTAJE_PRESTAMO: '0.8'
+        URL_TOKENS: 'http://poc-tokens-alb1-267066518.ap-south-1.elb.amazonaws.com/validaToken'
       run: npm run test
       
     - name: SonarQube Scan
