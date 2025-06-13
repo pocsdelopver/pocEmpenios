@@ -14,9 +14,12 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 8080
 
-MongoConection.createConnection().then(() => {
+MongoConection.createConnection().then(() => {clear
+  
   log.info('Conetado a MongoBD...')
   app.listen(PORT, '0.0.0.0', () => {
   log.info(`Servidor corriendo en puerto ${PORT}`)
 })
 }).catch(err => log.info(`Error al iniciar app: ${err}`))
+
+module.exports = app

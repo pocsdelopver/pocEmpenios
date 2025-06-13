@@ -6,7 +6,53 @@ on:
     - main
 
 jobs:
+  test-and-analyze:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm i
+
+    - name: Run tests with coverage
+      run: npm run test
+      env:
+        MONGO_URL='mongodb+srv://pocsdeveloper:u7pzqGRwE1lp2Vsq@pocnmp.3p3hvru.mongodb.net/'
+        COLLECTION_NAME='products'
+        PORCENTAJE_PRESTAMO=0.8
+        URL_TOKENS=http://poc-tokens-alb1-267066518.ap-south-1.elb.amazonaws.com/validaToken
+
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      with:
+        args: >
+          -Dsonar.organization=pocsdelopver
+          -Dsonar.projectKey=pocsdelopver_pocEmpenios
+          -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+          -Dsonar.coverage.exclusions=**/*.test.js,**/test/**
+          -Dsonar.coverage.minimum=80
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(cat coverage/lcov.info | grep "lines" | cut -d' ' -f4 | cut -d'%' -f1)
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "Test coverage ($COVERAGE%) is below the required threshold of 80%"
+          exit 1
+        fi
+        echo "Test coverage ($COVERAGE%) meets the required threshold of 80%"
   build-and-deploy:
+    needs: test-and-analyze
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ap-south-1
