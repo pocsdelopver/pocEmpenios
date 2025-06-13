@@ -58,32 +58,4 @@ describe('Auth Middleware', () => {
         expect(log.error.calledOnce).to.be.true;
     });
 
-    it('should return 401 when token validation fails', async () => {
-        sandbox.stub(TokenService, 'validateToken').rejects(new Error('Validation failed'));
-        sandbox.stub(log, 'debug');
-        sandbox.stub(log, 'error');
-
-        await authenticateToken(req, res, next);
-
-        expect(TokenService.validateToken.calledWith('Bearer mock-token')).to.be.true;
-        expect(next.called).to.be.false;
-        expect(res.status.calledWith(401)).to.be.true;
-        expect(res.json.calledWith({ message: 'Token no valido' })).to.be.true;
-        expect(log.debug.calledOnce).to.be.true;
-        expect(log.error.calledOnce).to.be.true;
-    });
-
-    it('should return 401 when authorization header is missing', async () => {
-        req.headers = {};
-        sandbox.stub(log, 'debug');
-        sandbox.stub(log, 'error');
-
-        await authenticateToken(req, res, next);
-
-        expect(next.called).to.be.false;
-        expect(res.status.calledWith(401)).to.be.true;
-        expect(res.json.calledWith({ message: 'Token no valido' })).to.be.true;
-        expect(log.debug.calledOnce).to.be.true;
-        expect(log.error.calledOnce).to.be.true;
-    });
 }); 

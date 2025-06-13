@@ -9,17 +9,18 @@ app.use('/api/v1', prestamosRoutes)
 
 app.get('/', (req, res) => {
   res.send('Bienvenido a la API de Prestamos')
-}
-)
+})
 
 const PORT = process.env.PORT || 8080
 
-MongoConection.createConnection().then(() => {clear
-  
-  log.info('Conetado a MongoBD...')
+MongoConection.createConnection().then(() => {
+  log.info('Conectado a MongoDB...')
   app.listen(PORT, '0.0.0.0', () => {
-  log.info(`Servidor corriendo en puerto ${PORT}`)
+    log.info(`Servidor corriendo en puerto ${PORT}`)
+  })
+}).catch(err => {
+  log.error(`Error al iniciar app: ${err}`)
+  process.exit(1)
 })
-}).catch(err => log.info(`Error al iniciar app: ${err}`))
 
 module.exports = app

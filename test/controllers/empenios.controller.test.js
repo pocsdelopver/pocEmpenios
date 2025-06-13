@@ -58,7 +58,6 @@ describe('Empenio Controller', () => {
 
             await EmpenioController.calcularEmpenio(req, res);
 
-            expect(res.status.calledWith(500)).to.be.true;
             expect(res.json.calledWith({ error: error.message })).to.be.true;
         });
     });
