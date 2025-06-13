@@ -6,7 +6,7 @@ on:
     - main
 
 jobs:
-  test-and-analyze:
+  test-&-sonar:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
