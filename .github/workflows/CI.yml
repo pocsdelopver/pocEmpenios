@@ -52,7 +52,7 @@ jobs:
         fi
         echo "Test coverage ($COVERAGE%) meets the required threshold of 80%"
   build-and-deploy:
-    needs: test-and-analyze
+    needs: test-and-sonar
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ap-south-1
